@@ -183,7 +183,7 @@ updated_at: {{.UpdatedAt}}
 {{.Body}}
 `
 
-var tmplPostsList = `{{range .}}{{.ID}}: {{.Title}}{{"\n"}}{{end}}`
+var tmplPostsList = `{{range .}}{{printf "%8d" .ID}} {{.Title}}{{"\n"}}{{end}}`
 
 var tmplMetaData = `---
 Total: {{.Total}}
