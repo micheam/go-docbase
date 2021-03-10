@@ -55,6 +55,7 @@ func newApp() *cli.App {
 		&cli.StringFlag{
 			Name:    "domain",
 			EnvVars: []string{"DOCBASE_DOMAIN"},
+			Usage:   "`NAME` on docbase.io",
 		},
 	}
 	app.Commands = []*cli.Command{getPost, viewPost, listPosts}
@@ -63,6 +64,7 @@ func newApp() *cli.App {
 
 var getPost = &cli.Command{
 	Name:      "get",
+	Usage:     "Get post content on docbase.io",
 	ArgsUsage: "POST_ID",
 	Flags:     []cli.Flag{},
 	Action: func(c *cli.Context) error {
@@ -94,6 +96,7 @@ var getPost = &cli.Command{
 
 var viewPost = &cli.Command{
 	Name:      "view",
+	Usage:     "View post on docbase.io",
 	ArgsUsage: "POST_ID",
 	Flags:     []cli.Flag{},
 	Action: func(c *cli.Context) error {
@@ -117,19 +120,31 @@ var viewPost = &cli.Command{
 }
 
 var listPosts = &cli.Command{
-	Name: "list",
+	Name:  "list",
+	Usage: "Search and list posts on docbase.io",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:    "query",
 			Aliases: []string{"q"},
+			Usage:   "`options` to narrow down the search. ex: groups,contributors, etc.",
 		},
 		&cli.IntFlag{
-			Name:  "page",
-			Value: 1,
+			Name:    "page",
+			Aliases: []string{"p"},
+			Value:   1,
+			Usage:   "`num` of posts on a page",
 		},
 		&cli.IntFlag{
-			Name:  "per-page",
-			Value: 20,
+			Name:    "per-page",
+			Aliases: []string{"pp"},
+			Value:   20,
+			Usage:   "`num` of page",
+		},
+		&cli.BoolFlag{
+			Name:    "meta",
+			Aliases: []string{"m"},
+			Usage:   "Display META-Fields (Total,Previous,Next) on footer",
+			Value:   false,
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -154,6 +169,9 @@ var listPosts = &cli.Command{
 			err = tmpl.Execute(os.Stdout, posts)
 			if err != nil {
 				return err
+			}
+			if !c.Bool("meta") {
+				return nil
 			}
 			tmpl, err = template.New("meta").Parse(tmplMetaData)
 			if err != nil {
@@ -183,7 +201,7 @@ updated_at: {{.UpdatedAt}}
 {{.Body}}
 `
 
-var tmplPostsList = `{{range .}}{{printf "%8d" .ID}} {{.Title}}{{"\n"}}{{end}}`
+var tmplPostsList = `{{range .}}{{printf "%d\t%s" .ID .Title}}{{"\n"}}{{end}}`
 
 var tmplMetaData = `---
 Total: {{.Total}}
