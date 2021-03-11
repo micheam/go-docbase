@@ -1,14 +1,10 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
-	"os/exec"
-	"runtime"
-	"text/template"
 
 	"github.com/micheam/go-docbase"
 	"github.com/micheam/go-docbase/internal/cli/post"
@@ -79,18 +75,7 @@ var getPost = &cli.Command{
 			Domain: c.String("domain"),
 			ID:     postID,
 		}
-		handler := func(ctx context.Context, post docbase.Post) error {
-			tmpl, err := template.New("get-post").Parse(tmplPostDetail)
-			if err != nil {
-				return err
-			}
-			err = tmpl.Execute(os.Stdout, post)
-			if err != nil {
-				return err
-			}
-			return nil
-		}
-		return post.Get(c.Context, req, handler)
+		return post.Get(c.Context, req, post.WritePostToConsole)
 	},
 }
 
@@ -111,11 +96,7 @@ var viewPost = &cli.Command{
 			Domain: c.String("domain"),
 			ID:     postID,
 		}
-		handler := func(ctx context.Context, post docbase.Post) error {
-			openbrowser(post.URL)
-			return nil
-		}
-		return post.Get(c.Context, req, handler)
+		return post.Get(c.Context, req, post.OpenBrowser)
 	},
 }
 
@@ -161,66 +142,10 @@ var listPosts = &cli.Command{
 		if c.Int("per-page") != 0 {
 			req.PerPage = pointer.IntPtr(c.Int("per-page"))
 		}
-		handler := func(ctx context.Context, posts []docbase.Post, meta docbase.Meta) error {
-			tmpl, err := template.New("list-posts").Parse(tmplPostsList)
-			if err != nil {
-				return err
-			}
-			err = tmpl.Execute(os.Stdout, posts)
-			if err != nil {
-				return err
-			}
-			if !c.Bool("meta") {
-				return nil
-			}
-			tmpl, err = template.New("meta").Parse(tmplMetaData)
-			if err != nil {
-				return err
-			}
-			err = tmpl.Execute(os.Stderr, meta)
-			if err != nil {
-				return err
-			}
-			return nil
+		presenter, err := post.BuildListResultHandler(c.Bool("meta"))
+		if err != nil {
+			return err
 		}
-		return post.List(c.Context, req, handler)
+		return post.List(c.Context, req, presenter)
 	},
-}
-
-var tmplPostDetail = `{{- /* TODO(micheam): Struct2Yaml なライブラリ、あるやろ？感 */ -}}
----
-id: {{.ID}} 
-title: {{.Title}}
-draft: {{.Draft}}
-archived: {{.Archived}}
-url: {{.URL}}
-created_at: {{.CreatedAt}}
-updated_at: {{.UpdatedAt}}
----
-
-{{.Body}}
-`
-
-var tmplPostsList = `{{range .}}{{printf "%d\t%s" .ID .Title}}{{"\n"}}{{end}}`
-
-var tmplMetaData = `---
-Total: {{.Total}}
-{{with .NextPageURL}}Next: {{.}}{{"\n"}}{{end -}} 
-{{with .PreviousPageURL}}Prev: {{.}}{{end -}}`
-
-func openbrowser(url string) {
-	var err error
-	switch runtime.GOOS {
-	case "linux":
-		err = exec.Command("xdg-open", url).Start()
-	case "windows":
-		err = exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		err = exec.Command("open", url).Start()
-	default:
-		err = fmt.Errorf("unsupported platform")
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
 }

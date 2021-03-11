@@ -11,7 +11,16 @@ import (
 	"strconv"
 )
 
-type PostID int
+type (
+	PostID int
+	Scope  string
+)
+
+const (
+	ScopeEveryone Scope = "everyone"
+	ScopeGroup    Scope = "group"
+	ScopePrivate  Scope = "private"
+)
 
 func ParsePostID(s string) (PostID, error) {
 	i, err := strconv.ParseInt(s, 10, 0)
@@ -30,9 +39,9 @@ type Post struct {
 	URL        string        `json:"url"`
 	CreatedAt  string        `json:"created_at"` // ISO 8601
 	UpdatedAt  string        `json:"updated_at"` // ISO 8601
-	Scope      string        `json:"scope"`
+	Scope      Scope         `json:"scope"`
 	SharingURL string        `json:"sharing_url"`
-	Tags       []interface{} `json:"tags"`
+	Tags       []Tag         `json:"tags"`
 	User       interface{}   `json:"user"`
 	Stars      int           `json:"stars_count"`
 	GoodJob    int           `json:"good_jobs_count"`
