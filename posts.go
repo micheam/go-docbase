@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,23 +50,17 @@ func ListPosts(ctx context.Context, domain string, param url.Values) ([]Post, *M
 	return defaultClient.ListPosts(ctx, domain, param)
 }
 
-func (c *APIClient) ListPosts(ctx context.Context, domain string, param url.Values) ([]Post, *Meta, error) {
-	url := fmt.Sprintf("https://api.docbase.io/teams/%s/posts", domain)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func (c *Client) ListPosts(ctx context.Context, domain string, param url.Values) ([]Post, *Meta, error) {
+	req, err := c.NewRequest(ctx, http.MethodGet, buildURL("teams", domain, "posts"), nil, &param)
 	if err != nil {
 		return nil, nil, err
 	}
-	req.Header.Add("X-Api-Version", "2")
-	req.Header.Add("X-DocBaseToken", c.token)
-	req.Header.Add("Content-Type", "application/json")
-	req.URL.RawQuery = param.Encode()
-
+	log.Println(req)
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, nil, fmt.Errorf("%d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
@@ -88,22 +83,16 @@ func GetPost(ctx context.Context, domain string, id PostID) (*Post, error) {
 	return defaultClient.GetPost(ctx, domain, id)
 }
 
-func (c *APIClient) GetPost(ctx context.Context, domain string, id PostID) (*Post, error) {
-	_url := fmt.Sprintf("https://api.docbase.io/teams/%s/posts/%d", domain, id)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, _url, nil)
+func (c *Client) GetPost(ctx context.Context, domain string, id PostID) (*Post, error) {
+	req, err := c.NewRequest(ctx, http.MethodGet, buildURL("teams", domain, "posts", fmt.Sprint(id)), nil, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("X-Api-Version", "2")
-	req.Header.Add("X-DocBaseToken", c.token)
-	req.Header.Add("Content-Type", "application/json")
-
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("%d: %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
