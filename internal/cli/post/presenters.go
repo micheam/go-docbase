@@ -10,27 +10,77 @@ import (
 	"text/template"
 
 	"github.com/micheam/go-docbase"
+	"github.com/micheam/go-docbase/internal/text"
+	"gopkg.in/yaml.v2"
 )
 
+type PostDetailViewData struct {
+	ID         int           `yaml:"id"`
+	Title      string        `yaml:"title"`
+	Body       string        `yaml:"-"`
+	Draft      bool          `yaml:"draft"`
+	Archived   bool          `yaml:"archived"`
+	URL        string        `yaml:"url"`
+	CreatedAt  string        `yaml:"created_at"` // ISO 8601
+	UpdatedAt  string        `yaml:"updated_at"` // ISO 8601
+	Scope      string        `yaml:"scope"`
+	SharingURL string        `yaml:"-"`
+	Tags       []string      `yaml:"tags"`
+	UserName   string        `yaml:"user"`
+	Stars      int           `yaml:"stars_count"`
+	GoodJob    int           `yaml:"good_jobs_count"`
+	Comments   []interface{} `yaml:"-"`
+	Groups     []interface{} `yaml:"-"`
+}
+
+func NewPostDetailViewData(src docbase.Post) *PostDetailViewData {
+	tags := []string{}
+	for i := range src.Tags {
+		tags = append(tags, src.Tags[i].Name)
+	}
+	return &PostDetailViewData{
+		ID:         src.ID.Int(),
+		Title:      src.Title,
+		Body:       src.Body,
+		Draft:      src.Draft,
+		Archived:   src.Archived,
+		URL:        src.URL,
+		CreatedAt:  src.CreatedAt,
+		UpdatedAt:  src.UpdatedAt,
+		Scope:      string(src.Scope),
+		SharingURL: src.SharingURL,
+		Tags:       tags,
+		UserName:   src.User.Name,
+		Stars:      src.Stars,
+		GoodJob:    src.GoodJob,
+		Comments:   src.Comments,
+		Groups:     src.Groups,
+	}
+}
+
+func marshal(v interface{}) string {
+	a, _ := yaml.Marshal(v)
+	return string(a)
+}
+
 func WritePostToConsole(ctx context.Context, post docbase.Post) error {
-	// TODO(micheam): Struct2Yaml なライブラリを探して切り替え
+	// TODO(micheam): Win対応
+	//   現状、Body の改行コードを一律変換してしまっている。
 	const tmplPostDetail = `---
-id: {{.ID}} 
-title: {{.Title}}
-draft: {{.Draft}}
-archived: {{.Archived}}
-url: {{.URL}}
-created_at: {{.CreatedAt}}
-updated_at: {{.UpdatedAt}}
+{{marshal . -}}
 ---
 
-{{.Body}}
+{{dos2unix .Body}}
 `
-	tmpl, err := template.New("get-post").Parse(tmplPostDetail)
+	tmpl, err := template.New("get-post").Funcs(
+		template.FuncMap{
+			"marshal":  marshal,
+			"dos2unix": text.Dos2Unix,
+		}).Parse(tmplPostDetail)
 	if err != nil {
 		return err
 	}
-	err = tmpl.Execute(os.Stdout, post)
+	err = tmpl.Execute(os.Stdout, NewPostDetailViewData(post))
 	if err != nil {
 		return err
 	}

@@ -16,6 +16,10 @@ type (
 	Scope  string
 )
 
+func (p PostID) Int() int {
+	return int(p)
+}
+
 const (
 	ScopeEveryone Scope = "everyone"
 	ScopeGroup    Scope = "group"
@@ -42,7 +46,7 @@ type Post struct {
 	Scope      Scope         `json:"scope"`
 	SharingURL string        `json:"sharing_url"`
 	Tags       []Tag         `json:"tags"`
-	User       interface{}   `json:"user"`
+	User       User          `json:"user"`
 	Stars      int           `json:"stars_count"`
 	GoodJob    int           `json:"good_jobs_count"`
 	Comments   []interface{} `json:"comments"`
