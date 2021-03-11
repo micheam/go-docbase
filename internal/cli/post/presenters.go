@@ -67,7 +67,7 @@ func WritePostToConsole(ctx context.Context, post docbase.Post) error {
 	// TODO(micheam): Win対応
 	//   現状、Body の改行コードを一律変換してしまっている。
 	const tmplPostDetail = `---
-{{marshal . -}}
+{{marshal .}}
 ---
 
 {{dos2unix .Body}}
