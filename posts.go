@@ -124,12 +124,6 @@ func (c *Client) GetPost(ctx context.Context, domain string, id PostID) (*Post, 
 	return post, nil
 }
 
-// ######################################################
-// # Post Creation
-// ######################################################
-//
-// https://help.docbase.io/posts/92980#%E3%83%AA%E3%82%AF%E3%82%A8%E3%82%B9%E3%83%88%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF
-
 type PostOption struct {
 	Draft  *bool    `json:"draft,omitempty"`
 	Notice *bool    `json:"notice,omitempty"`
