@@ -10,6 +10,7 @@ import (
 
 	"github.com/micheam/go-docbase"
 	"github.com/micheam/go-docbase/internal/cli/post"
+	"github.com/micheam/go-docbase/internal/cli/tag"
 	"github.com/micheam/go-docbase/internal/pointer"
 	"github.com/urfave/cli/v2"
 )
@@ -56,7 +57,10 @@ func newApp() *cli.App {
 			Usage:   "`NAME` on docbase.io",
 		},
 	}
-	app.Commands = []*cli.Command{getPost, viewPost, listPosts, createPost}
+	app.Commands = []*cli.Command{
+		getPost, viewPost, listPosts, createPost,
+		tags,
+	}
 	return app
 }
 
@@ -205,5 +209,26 @@ var createPost = &cli.Command{
 			return nil
 		}
 		return post.Create(c.Context, req, presenter)
+	},
+}
+
+var tags = &cli.Command{
+	Name:  "tags",
+	Usage: "Show tags of group",
+	Flags: []cli.Flag{},
+	Action: func(c *cli.Context) error {
+		if c.Bool("verbose") {
+			log.SetOutput(os.Stderr)
+		}
+		req := tag.ListRequest{
+			Domain: c.String("domain"),
+		}
+		presenter := func(ctx context.Context, tags []docbase.Tag) error {
+			for _, tag := range tags {
+				fmt.Println(tag.Name)
+			}
+			return nil
+		}
+		return tag.List(c.Context, req, presenter)
 	},
 }

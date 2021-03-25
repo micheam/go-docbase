@@ -30,7 +30,7 @@
   - [ ] [ファイルダウンロードAPI](https://help.docbase.io/posts/1084833)
 
 * タグ
-  - [ ] [タグの取得API](https://help.docbase.io/posts/92979)
+  - [x] [タグの取得API](https://help.docbase.io/posts/92979)
 
 * グループ
   - [ ] [グループ作成API](https://help.docbase.io/posts/652985)
