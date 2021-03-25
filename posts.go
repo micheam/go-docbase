@@ -1,9 +1,12 @@
 package docbase
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -119,4 +122,80 @@ func (c *Client) GetPost(ctx context.Context, domain string, id PostID) (*Post, 
 		return nil, err
 	}
 	return post, nil
+}
+
+// ######################################################
+// # Post Creation
+// ######################################################
+//
+// https://help.docbase.io/posts/92980#%E3%83%AA%E3%82%AF%E3%82%A8%E3%82%B9%E3%83%88%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF
+
+type PostOption struct {
+	Draft  *bool    `json:"draft,omitempty"`
+	Notice *bool    `json:"notice,omitempty"`
+	Tags   []string `json:"tags"`
+	Scope  string   `json:"scope,omitempty"` // TODO(micheam): 指定可能な値を明示する everyon (default), group, private
+	Groups []int    `json:"groups"`          // require on scope:groups
+}
+
+func NewPost(ctx context.Context, domain string, title string, body io.Reader, option PostOption) (*Post, error) {
+	return defaultClient.NewPost(ctx, domain, title, body, option)
+}
+
+func (c *Client) NewPost(ctx context.Context, domain string, title string, body io.Reader, option PostOption) (*Post, error) {
+	if domain == "" {
+		return nil, errors.New("`domain` must not be empty")
+	}
+	if title == "" {
+		return nil, errors.New("`title` must not be empty")
+	}
+
+	var _body = new(bytes.Buffer)
+	{
+		b, err := ioutil.ReadAll(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read body: %w", err)
+		}
+
+		type RequestBody struct {
+			Title string `json:"title"`
+			Body  string `json:"body"`
+
+			PostOption
+		}
+		bb, err := json.Marshal(RequestBody{title, string(b), option})
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal body: %w", err)
+		}
+		_body = bytes.NewBuffer(bb)
+	}
+
+	req, err := c.NewRequest(ctx, http.MethodPost, buildURL("teams", domain, "posts"), _body, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to do http reqest: %w", err)
+	}
+	defer resp.Body.Close()
+	if 300 <= resp.StatusCode {
+		// TODO(micheam): handle error object.
+		//   エラーの詳細情報がBodyで返却されるので、ちゃんと扱う
+		b, _ := ioutil.ReadAll(resp.Body)
+		log.Println(string(b))
+		return nil, fmt.Errorf("docbase api returns NG: %s", resp.Status)
+	}
+	var (
+		created = new(Post)
+		bytes   = []byte{}
+	)
+	if bytes, err = ioutil.ReadAll(resp.Body); err != nil {
+		return nil, fmt.Errorf("failed to read Response body: %w", err)
+	}
+	if err := json.Unmarshal(bytes, created); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+	return created, nil
 }

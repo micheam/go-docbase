@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"time"
 
 	"github.com/micheam/go-docbase"
 	"github.com/micheam/go-docbase/internal/cli/post"
@@ -54,7 +56,7 @@ func newApp() *cli.App {
 			Usage:   "`NAME` on docbase.io",
 		},
 	}
-	app.Commands = []*cli.Command{getPost, viewPost, listPosts}
+	app.Commands = []*cli.Command{getPost, viewPost, listPosts, createPost}
 	return app
 }
 
@@ -147,5 +149,61 @@ var listPosts = &cli.Command{
 			return err
 		}
 		return post.List(c.Context, req, presenter)
+	},
+}
+
+// TODO(micheam): 設定ファイルで指定可能にする
+var defaultTitle = func() string {
+	now := time.Now()
+	return fmt.Sprintf("%s 作業メモ", now.Format("2006-01-02"))
+}
+
+var createPost = &cli.Command{
+	Name:      "new",
+	Usage:     "Create new post.",
+	ArgsUsage: "title",
+	Flags: []cli.Flag{
+		// TODO(micheam): option `--dradt`
+		// TODO(micheam): option `--notice`
+		// TODO(micheam): option `--tags`
+		// TODO(micheam): option `--scope`
+		// TODO(micheam): option `--groups`
+		&cli.StringFlag{
+			Name:     "title",
+			Aliases:  []string{"t"},
+			Usage:    "`VALUE` of title",
+			Required: false,
+			Value:    defaultTitle(),
+		},
+		&cli.StringFlag{
+			Name:     "file",
+			Aliases:  []string{"f"},
+			Usage:    "`PATH` of input file",
+			Required: true, // TODO(micheam): change to OPTIONAL
+			//   省略された場合はエディタを起動するようにしたい
+		},
+	},
+	Action: func(c *cli.Context) error {
+		if c.Bool("verbose") {
+			log.SetOutput(os.Stderr)
+		}
+		req := post.CreateRequest{
+			Title:  c.String("title"),
+			Domain: c.String("domain"),
+		}
+		if len(c.String("file")) != 0 {
+			filepath := c.String("file")
+			file, err := os.Open(filepath)
+			if err != nil {
+				return fmt.Errorf("cant open %q: %w", filepath, err)
+			}
+			defer func() { _ = file.Close() }()
+			req.Body = file
+		}
+		presenter := func(ctx context.Context, post *docbase.Post) error {
+			fmt.Println(post.URL)
+			return nil
+		}
+		return post.Create(c.Context, req, presenter)
 	},
 }
