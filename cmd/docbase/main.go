@@ -59,39 +59,32 @@ func newApp() *cli.App {
 		},
 	}
 	app.Commands = []*cli.Command{
-		getPost, viewPost, listPosts,
+		viewPost, listPosts,
 		newPost, editPost,
 		tags,
 	}
 	return app
 }
 
-var getPost = &cli.Command{
-	Name:      "get",
-	Usage:     "Get post content on docbase.io",
-	ArgsUsage: "POST_ID",
-	Flags:     []cli.Flag{},
-	Action: func(c *cli.Context) error {
-		if c.Bool("verbose") {
-			log.SetOutput(os.Stderr)
-		}
-		postID, err := docbase.ParsePostID(c.Args().First())
-		if err != nil {
-			return err
-		}
-		req := post.GetRequest{
-			Domain: c.String("domain"),
-			ID:     postID,
-		}
-		return post.Get(c.Context, req, post.WritePostToConsole)
-	},
-}
+const maxLines = 100
 
 var viewPost = &cli.Command{
 	Name:      "view",
-	Usage:     "View post on docbase.io",
+	Usage:     "show post title and body",
 	ArgsUsage: "POST_ID",
-	Flags:     []cli.Flag{},
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "web",
+			Aliases: []string{"w"},
+			Usage:   "Open a post in the browser",
+		},
+		&cli.IntFlag{
+			Name:    "lines",
+			Aliases: []string{"l"},
+			Usage:   fmt.Sprintf("`NUM` to display body. <= %d\n", maxLines),
+			Value:   30,
+		},
+	},
 	Action: func(c *cli.Context) error {
 		if c.Bool("verbose") {
 			log.SetOutput(os.Stderr)
@@ -104,7 +97,15 @@ var viewPost = &cli.Command{
 			Domain: c.String("domain"),
 			ID:     postID,
 		}
-		return post.Get(c.Context, req, post.OpenBrowser)
+		lines := c.Int("lines")
+		if lines > maxLines {
+			lines = maxLines
+		}
+		var handle post.GetResponseHandler = post.WritePost(os.Stdout, lines)
+		if c.Bool("web") {
+			handle = post.OpenBrowser
+		}
+		return post.Get(c.Context, req, handle)
 	},
 }
 

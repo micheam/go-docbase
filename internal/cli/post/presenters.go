@@ -3,10 +3,12 @@ package post
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"runtime"
+	"strings"
 	"text/template"
 
 	"github.com/micheam/go-docbase"
@@ -14,77 +16,57 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type PostDetailViewData struct {
-	ID         int           `yaml:"id"`
-	Title      string        `yaml:"title"`
-	Body       string        `yaml:"-"`
-	Draft      bool          `yaml:"draft"`
-	Archived   bool          `yaml:"archived"`
-	URL        string        `yaml:"url"`
-	CreatedAt  string        `yaml:"created_at"` // ISO 8601
-	UpdatedAt  string        `yaml:"updated_at"` // ISO 8601
-	Scope      string        `yaml:"scope"`
-	SharingURL string        `yaml:"-"`
-	Tags       []string      `yaml:"tags"`
-	UserName   string        `yaml:"user"`
-	Stars      int           `yaml:"stars_count"`
-	GoodJob    int           `yaml:"good_jobs_count"`
-	Comments   []interface{} `yaml:"-"`
-	Groups     []interface{} `yaml:"-"`
-}
-
-func NewPostDetailViewData(src docbase.Post) *PostDetailViewData {
-	tags := []string{}
-	for i := range src.Tags {
-		tags = append(tags, src.Tags[i].Name)
-	}
-	return &PostDetailViewData{
-		ID:         src.ID.Int(),
-		Title:      src.Title,
-		Body:       src.Body,
-		Draft:      src.Draft,
-		Archived:   src.Archived,
-		URL:        src.URL,
-		CreatedAt:  src.CreatedAt,
-		UpdatedAt:  src.UpdatedAt,
-		Scope:      string(src.Scope),
-		SharingURL: src.SharingURL,
-		Tags:       tags,
-		UserName:   src.User.Name,
-		Stars:      src.Stars,
-		GoodJob:    src.GoodJob,
-		Comments:   src.Comments,
-		Groups:     src.Groups,
-	}
-}
-
 func marshal(v interface{}) string {
 	a, _ := yaml.Marshal(v)
 	return string(a)
 }
 
-func WritePostToConsole(ctx context.Context, post docbase.Post) error {
-	// TODO(micheam): Win対応
-	//   現状、Body の改行コードを一律変換してしまっている。
-	const tmplPostDetail = `---
-{{marshal .}}
----
+func WritePost(out io.Writer, n int) GetResponseHandler {
+	type M struct {
+		docbase.Post
+		Total int
+		Lines []string
+	}
+	const tmplPostDetail = `[{{.ID}}] {{.Title}}
 
-{{dos2unix .Body}}
+Tags:      {{range .Tags}}{{- printf "#%s " .Name }}{{end}}
+CreatedAt: {{.CreatedAt}}
+UpdatedAt: {{.UpdatedAt}}
+Draft:     {{.Draft}}
+Archived:  {{.Archived}}
+
+{{range .Lines}}
+  {{- .}}
+{{end}}
+
+Showed {{len .Lines}} of {{.Total}}
 `
-	tmpl, err := template.New("get-post").Funcs(
-		template.FuncMap{
-			"marshal":  marshal,
-			"dos2unix": text.Dos2Unix,
-		}).Parse(tmplPostDetail)
+	funcMap := template.FuncMap{}
+	tmpl, err := template.New("get-post").Funcs(funcMap).
+		Parse(tmplPostDetail)
 	if err != nil {
-		return err
+		panic(err)
 	}
-	err = tmpl.Execute(os.Stdout, NewPostDetailViewData(post))
-	if err != nil {
-		return err
+	return func(ctx context.Context, post docbase.Post) error {
+		// TODO(micheam): Win対応
+		lines := strings.Split(text.Dos2Unix(post.Body), "\n")
+		total := len(lines)
+		if n > 0 {
+			if n > len(lines) {
+				n = len(lines)
+			}
+			lines = lines[:n]
+		}
+		err = tmpl.Execute(os.Stdout, M{
+			Post:  post,
+			Total: total,
+			Lines: lines,
+		})
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	return nil
 }
 
 func OpenBrowser(_ context.Context, post docbase.Post) error {
