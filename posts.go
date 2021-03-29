@@ -12,6 +12,8 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"github.com/micheam/go-docbase/internal/pointer"
 )
 
 type (
@@ -35,6 +37,10 @@ func ParsePostID(s string) (PostID, error) {
 		return 0, err
 	}
 	return PostID(i), nil
+}
+
+func (p PostID) String() string {
+	return fmt.Sprintf("%d", p)
 }
 
 type Post struct {
@@ -167,6 +173,77 @@ func (c *Client) NewPost(ctx context.Context, domain string, title string, body 
 	req, err := c.NewRequest(ctx, http.MethodPost, buildURL("teams", domain, "posts"), _body, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to do http reqest: %w", err)
+	}
+	defer resp.Body.Close()
+	if 300 <= resp.StatusCode {
+		// TODO(micheam): handle error object.
+		//   エラーの詳細情報がBodyで返却されるので、ちゃんと扱う
+		b, _ := ioutil.ReadAll(resp.Body)
+		log.Println(string(b))
+		return nil, fmt.Errorf("docbase api returns NG: %s", resp.Status)
+	}
+	var (
+		created = new(Post)
+		bytes   = []byte{}
+	)
+	if bytes, err = ioutil.ReadAll(resp.Body); err != nil {
+		return nil, fmt.Errorf("failed to read Response body: %w", err)
+	}
+	if err := json.Unmarshal(bytes, created); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal response body: %w", err)
+	}
+	return created, nil
+}
+
+// UpdateFields は、更新対象のフィールドを保持します。
+type UpdateFields struct {
+	Title  *string   `json:"title,omitempty"`
+	Draft  *bool     `json:"draft,omitempty"`
+	Notice *bool     `json:"notice,omitempty"`
+	Tags   *[]string `json:"tags,omitempty"`
+	Scope  *string   `json:"scope,omitempty"`
+	Groups *[]int    `json:"groups,omitempty"`
+}
+
+func UpdatePost(ctx context.Context, domain string, id PostID, body io.Reader, fields UpdateFields) (*Post, error) {
+	return defaultClient.UpdatePost(ctx, domain, id, body, fields)
+}
+
+func (c *Client) UpdatePost(ctx context.Context, domain string, id PostID, body io.Reader, fields UpdateFields) (*Post, error) {
+	if domain == "" {
+		return nil, errors.New("`domain` must not be empty")
+	}
+
+	var _body *bytes.Buffer
+	{
+		rb := struct {
+			Body *string `json:"body,omitempty"`
+			UpdateFields
+		}{
+			UpdateFields: fields,
+		}
+		if body != nil {
+			b, err := ioutil.ReadAll(body)
+			if err != nil {
+				return nil, fmt.Errorf("failed to read body: %w", err)
+			}
+			rb.Body = pointer.StringPtr(string(b))
+		}
+		bb, err := json.Marshal(rb)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal body: %w", err)
+		}
+		_body = bytes.NewBuffer(bb)
+	}
+
+	req, err := c.NewRequest(ctx, http.MethodPatch, buildURL("teams", domain, "posts", id.String()), _body, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to patch request: %w", err)
 	}
 
 	resp, err := c.Do(req)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -58,7 +59,8 @@ func newApp() *cli.App {
 		},
 	}
 	app.Commands = []*cli.Command{
-		getPost, viewPost, listPosts, createPost,
+		getPost, viewPost, listPosts,
+		newPost, editPost,
 		tags,
 	}
 	return app
@@ -162,10 +164,10 @@ var defaultTitle = func() string {
 	return fmt.Sprintf("%s 作業メモ", now.Format("2006-01-02"))
 }
 
-var createPost = &cli.Command{
+var newPost = &cli.Command{
 	Name:      "new",
 	Usage:     "Create new post.",
-	ArgsUsage: "title",
+	ArgsUsage: "-",
 	Flags: []cli.Flag{
 		// TODO(micheam): option `--dradt`
 		// TODO(micheam): option `--notice`
@@ -209,6 +211,57 @@ var createPost = &cli.Command{
 			return nil
 		}
 		return post.Create(c.Context, req, presenter)
+	},
+}
+
+var editPost = &cli.Command{
+	Name:      "edit",
+	Usage:     "edit specified post.",
+	ArgsUsage: "ID",
+	Flags: []cli.Flag{
+		// TODO(micheam): option `--dradt`
+		// TODO(micheam): option `--notice`
+		// TODO(micheam): option `--tags`
+		// TODO(micheam): option `--scope`
+		// TODO(micheam): option `--groups`
+		// TOOD(micheam): option `--title`
+		&cli.StringFlag{
+			Name:     "file",
+			Aliases:  []string{"f"},
+			Usage:    "`PATH` of input file",
+			Required: true, // TODO(micheam): change to OPTIONAL
+			//   省略された場合はエディタを起動するようにしたい
+		},
+	},
+	Action: func(c *cli.Context) error {
+		if c.Bool("verbose") {
+			log.SetOutput(os.Stderr)
+		}
+		if !c.Args().Present() {
+			return errors.New("need to specify target post id")
+		}
+		id, err := docbase.ParsePostID(c.Args().First())
+		if err != nil {
+			return fmt.Errorf("illegal post id: %w", err)
+		}
+		req := post.UpdateRequest{
+			Domain: c.String("domain"), ID: id,
+		}
+		if len(c.String("file")) != 0 {
+			filepath := c.String("file")
+			file, err := os.Open(filepath)
+			if err != nil {
+				return fmt.Errorf("cant open %q: %w", filepath, err)
+			}
+			defer func() { _ = file.Close() }()
+			req.Body = file
+		}
+		presenter := func(ctx context.Context, post *docbase.Post) error {
+			fmt.Println("Updated.")
+			fmt.Println(post.URL)
+			return nil
+		}
+		return post.Upate(c.Context, req, presenter)
 	},
 }
 

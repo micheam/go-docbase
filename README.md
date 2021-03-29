@@ -16,7 +16,7 @@
   - [x] [メモの検索API](https://help.docbase.io/posts/92984)
   - [x] [メモの投稿API](https://help.docbase.io/posts/92980)
   - [x] [メモの詳細取得API](https://help.docbase.io/posts/97204)
-  - [ ] [メモの更新API](https://help.docbase.io/posts/92981)
+  - [x] [メモの更新API](https://help.docbase.io/posts/92981)
   - [ ] [メモのアーカイブAPI](https://help.docbase.io/posts/665804)
   - [ ] [メモのアーカイブ解除API](https://help.docbase.io/posts/665806)
   - [ ] [メモの削除API](https://help.docbase.io/posts/92982)

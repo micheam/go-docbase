@@ -18,3 +18,4 @@
 
 .envrc
 bin/
+.tmp/
