@@ -66,8 +66,6 @@ func newApp() *cli.App {
 	return app
 }
 
-const maxLines = 100
-
 var viewPost = &cli.Command{
 	Name:      "view",
 	Usage:     "show post title and body",
@@ -81,8 +79,12 @@ var viewPost = &cli.Command{
 		&cli.IntFlag{
 			Name:    "lines",
 			Aliases: []string{"l"},
-			Usage:   fmt.Sprintf("`NUM` to display body. <= %d\n", maxLines),
+			Usage:   "`NUM` to display body.",
 			Value:   30,
+		},
+		&cli.BoolFlag{
+			Name:  "full",
+			Usage: "display full body.",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -98,8 +100,8 @@ var viewPost = &cli.Command{
 			ID:     postID,
 		}
 		lines := c.Int("lines")
-		if lines > maxLines {
-			lines = maxLines
+		if c.Bool("full") {
+			lines = 0
 		}
 		var handle post.GetResponseHandler = post.WritePost(os.Stdout, lines)
 		if c.Bool("web") {
