@@ -1,10 +1,21 @@
 package post
 
 import (
+	"bytes"
+	"context"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/micheam/go-docbase"
 )
+
+func timeMust(t time.Time, err error) time.Time {
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
 
 func Test_marshal(t *testing.T) {
 	data := struct {
@@ -27,5 +38,50 @@ tags:
 	got := marshal(data)
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("mismatch (-want, +got):%s\n", diff)
+	}
+}
+
+func TestWritePost(t *testing.T) {
+	var buf = new(bytes.Buffer)
+	sut := WritePost(buf, 5)
+	ctx := context.Background()
+	post := docbase.Post{
+		ID:        11111,
+		Title:     "Title For Test",
+		Tags:      []docbase.Tag{{Name: "tag1"}, {Name: "tag2"}},
+		CreatedAt: "1998-02-09T11:12:13",
+		UpdatedAt: "1998-02-09T11:12:13",
+		Body: `aaaaaaaaaaaaaaaaaaaa
+bbbbbbbbbbbbbbbbbbbb
+cccccccccccccccccccc
+dddddddddddddddddddd
+eeeeeeeeeeeeeeeeeeee
+ffffffffffffffffffff
+gggggggggggggggggggg`,
+	}
+	err := sut(ctx, post)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+		t.FailNow()
+	}
+	want := `[11111] Title For Test
+
+Tags:      #tag1 #tag2 
+CreatedAt: 1998-02-09T11:12:13
+UpdatedAt: 1998-02-09T11:12:13
+Draft:     false
+Archived:  false
+
+aaaaaaaaaaaaaaaaaaaa
+bbbbbbbbbbbbbbbbbbbb
+cccccccccccccccccccc
+dddddddddddddddddddd
+eeeeeeeeeeeeeeeeeeee
+
+
+Showed 5 of 7
+`
+	if diff := cmp.Diff(want, buf.String()); diff != "" {
+		t.Errorf("result text mismatch (-want, +got):%s\n", diff)
 	}
 }

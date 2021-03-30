@@ -29,11 +29,11 @@ func WritePost(out io.Writer, n int) GetResponseHandler {
 	}
 	const tmplPostDetail = `[{{.ID}}] {{.Title}}
 
-Tags:      {{range .Tags}}{{- printf "#%s " .Name }}{{end}}
-CreatedAt: {{.CreatedAt}}
-UpdatedAt: {{.UpdatedAt}}
-Draft:     {{.Draft}}
-Archived:  {{.Archived}}
+> Tags      : {{range .Tags}}{{- printf "#%s " .Name }}{{end}}
+> CreatedAt : {{.CreatedAt}}
+> UpdatedAt : {{.UpdatedAt}}
+> Draft     : {{.Draft}}
+> Archived  : {{.Archived}}
 
 {{range .Lines}}
   {{- .}}
