@@ -16,7 +16,10 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var version = "0.1.0"
+var (
+	Version = "0.1.0"
+	Githash = "devel"
+)
 
 func main() {
 	err := newApp().Run(os.Args)
@@ -33,8 +36,8 @@ func init() {
 func newApp() *cli.App {
 	app := cli.NewApp()
 	app.Name = "docbase"
-	app.Usage = "CLI Client-Tool for DocBase API"
-	app.Version = version
+	app.Usage = "CLI Client for DocBase API"
+	app.Version = fmt.Sprintf("%s (rev: %s)", Version, Githash)
 	app.Authors = []*cli.Author{
 		{
 			Name:  "Michito Maeda",
