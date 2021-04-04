@@ -1,15 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/micheam/go-docbase"
+	dbcli "github.com/micheam/go-docbase/internal/cli"
 	"github.com/micheam/go-docbase/internal/cli/post"
 	"github.com/micheam/go-docbase/internal/cli/tag"
 	"github.com/micheam/go-docbase/internal/pointer"
@@ -181,18 +184,19 @@ var newPost = &cli.Command{
 		// TODO(micheam): option `--scope`
 		// TODO(micheam): option `--groups`
 		&cli.StringFlag{
-			Name:     "title",
-			Aliases:  []string{"t"},
-			Usage:    "`VALUE` of title",
-			Required: false,
-			Value:    defaultTitle(),
+			Name:    "title",
+			Aliases: []string{"t"},
+			Usage:   "`STR-VAL` for title",
+			Value:   defaultTitle(),
 		},
 		&cli.StringFlag{
-			Name:     "file",
-			Aliases:  []string{"f"},
-			Usage:    "`PATH` of input file",
-			Required: true, // TODO(micheam): change to OPTIONAL
-			//   省略された場合はエディタを起動するようにしたい
+			Name:    "body",
+			Aliases: []string{"b"},
+			Usage:   "`STR-VAL` for body",
+		},
+		&cli.StringFlag{
+			Name:  "body-file",
+			Usage: "`PATH` of input file",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -203,15 +207,29 @@ var newPost = &cli.Command{
 			Title:  c.String("title"),
 			Domain: c.String("domain"),
 		}
-		if len(c.String("file")) != 0 {
-			filepath := c.String("file")
+
+		// Body
+		if len(c.String("body")) != 0 {
+			req.Body = strings.NewReader(c.String("body"))
+		} else if len(c.String("body-file")) != 0 {
+			filepath := c.String("body-file")
 			file, err := os.Open(filepath)
 			if err != nil {
 				return fmt.Errorf("cant open %q: %w", filepath, err)
 			}
 			defer func() { _ = file.Close() }()
 			req.Body = file
+		} else {
+			b, err := dbcli.CaptureInputFromEditor(
+				dbcli.GetPreferredEditorFromEnvironment,
+				nil,
+			)
+			if err != nil {
+				return fmt.Errorf("faild to capture input: %w", err)
+			}
+			req.Body = bytes.NewReader(b)
 		}
+
 		presenter := func(ctx context.Context, post *docbase.Post) error {
 			fmt.Println(post.URL)
 			return nil
@@ -230,13 +248,20 @@ var editPost = &cli.Command{
 		// TODO(micheam): option `--tags`
 		// TODO(micheam): option `--scope`
 		// TODO(micheam): option `--groups`
-		// TOOD(micheam): option `--title`
 		&cli.StringFlag{
-			Name:     "file",
-			Aliases:  []string{"f"},
-			Usage:    "`PATH` of input file",
-			Required: true, // TODO(micheam): change to OPTIONAL
-			//   省略された場合はエディタを起動するようにしたい
+			Name:    "title",
+			Aliases: []string{"t"},
+			Usage:   "`STR-VAL` for title",
+			Value:   defaultTitle(),
+		},
+		&cli.StringFlag{
+			Name:    "body",
+			Aliases: []string{"b"},
+			Usage:   "`STR-VAL` for body",
+		},
+		&cli.StringFlag{
+			Name:  "body-file",
+			Usage: "`PATH` of input file",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -251,17 +276,49 @@ var editPost = &cli.Command{
 			return fmt.Errorf("illegal post id: %w", err)
 		}
 		req := post.UpdateRequest{
-			Domain: c.String("domain"), ID: id,
+			Domain: c.String("domain"),
+			ID:     id,
 		}
-		if len(c.String("file")) != 0 {
-			filepath := c.String("file")
+
+		// Get existing post
+		var existing docbase.Post
+		{
+			r := post.GetRequest{
+				Domain: c.String("domain"),
+				ID:     id,
+			}
+			var h post.GetResponseHandler = func(_ context.Context, post docbase.Post) error {
+				existing = post
+				return nil
+			}
+			err := post.Get(c.Context, r, h)
+			if err != nil {
+				return fmt.Errorf("faild to get existing post(%d): %w", id, err)
+			}
+		}
+
+		// Body
+		if len(c.String("body")) != 0 {
+			req.Body = strings.NewReader(c.String("body"))
+		} else if len(c.String("body-file")) != 0 {
+			filepath := c.String("body-file")
 			file, err := os.Open(filepath)
 			if err != nil {
 				return fmt.Errorf("cant open %q: %w", filepath, err)
 			}
 			defer func() { _ = file.Close() }()
 			req.Body = file
+		} else {
+			b, err := dbcli.CaptureInputFromEditor(
+				dbcli.GetPreferredEditorFromEnvironment,
+				[]byte(existing.Body),
+			)
+			if err != nil {
+				return fmt.Errorf("faild to capture input: %w", err)
+			}
+			req.Body = bytes.NewReader(b)
 		}
+
 		presenter := func(ctx context.Context, post *docbase.Post) error {
 			fmt.Println("Updated.")
 			fmt.Println(post.URL)
