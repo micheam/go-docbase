@@ -109,7 +109,7 @@ var viewPost = &cli.Command{
 		if c.Bool("full") {
 			lines = 0
 		}
-		var handle post.GetResponseHandler = post.WritePost(os.Stdout, lines)
+		var handle = post.WritePost(os.Stdout, lines)
 		if c.Bool("web") {
 			handle = post.OpenBrowser
 		}
@@ -287,7 +287,7 @@ var editPost = &cli.Command{
 				Domain: c.String("domain"),
 				ID:     id,
 			}
-			var h post.GetResponseHandler = func(_ context.Context, post docbase.Post) error {
+			var h = func(_ context.Context, post docbase.Post) error {
 				existing = post
 				return nil
 			}
@@ -318,13 +318,12 @@ var editPost = &cli.Command{
 			}
 			req.Body = bytes.NewReader(b)
 		}
-
-		presenter := func(ctx context.Context, post *docbase.Post) error {
+		h := func(ctx context.Context, post docbase.Post) error {
 			fmt.Println("Updated.")
 			fmt.Println(post.URL)
 			return nil
 		}
-		return post.Upate(c.Context, req, presenter)
+		return post.Upate(c.Context, req, h)
 	},
 }
 

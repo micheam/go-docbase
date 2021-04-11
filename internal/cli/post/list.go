@@ -16,9 +16,7 @@ type ListRequest struct {
 	Domain  string
 }
 
-type ListResonseHandler func(ctx context.Context, posts []docbase.Post, meta docbase.Meta) error
-
-func List(ctx context.Context, req ListRequest, handler ListResonseHandler) error {
+func List(ctx context.Context, req ListRequest, handle PostListHandler) error {
 	param := url.Values{}
 	if req.Query != nil {
 		param.Add("q", *req.Query)
@@ -36,5 +34,5 @@ func List(ctx context.Context, req ListRequest, handler ListResonseHandler) erro
 	if err != nil {
 		return err
 	}
-	return handler(ctx, posts, *meta)
+	return handle(ctx, posts, *meta)
 }

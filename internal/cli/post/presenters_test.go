@@ -64,13 +64,15 @@ gggggggggggggggggggg`,
 		t.Errorf("unexpected error: %v", err)
 		t.FailNow()
 	}
-	want := `[11111] Title For Test
-
+	want := `---
+ID:        11111
+Title:     Title For Test
 Tags:      #tag1 #tag2 
 CreatedAt: 1998-02-09T11:12:13
 UpdatedAt: 1998-02-09T11:12:13
 Draft:     false
 Archived:  false
+---
 
 aaaaaaaaaaaaaaaaaaaa
 bbbbbbbbbbbbbbbbbbbb

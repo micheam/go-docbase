@@ -14,10 +14,10 @@ type UpdateRequest struct {
 	Body   io.Reader
 }
 
-func Upate(ctx context.Context, req UpdateRequest, handler CreationResultHandler) error {
+func Upate(ctx context.Context, req UpdateRequest, handle PostHandler) error {
 	updated, err := docbase.UpdatePost(ctx, req.Domain, req.ID, req.Body, docbase.UpdateFields{})
 	if err != nil {
 		return fmt.Errorf("failed to create new post: %w", err)
 	}
-	return handler(ctx, updated)
+	return handle(ctx, *updated)
 }
