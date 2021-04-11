@@ -21,19 +21,27 @@ func marshal(v interface{}) string {
 	return string(a)
 }
 
-func WritePost(out io.Writer, n int) GetResponseHandler {
+// define ResultHandlers
+type (
+	PostHandler     func(ctx context.Context, p docbase.Post) error
+	PostListHandler func(ctx context.Context, ps []docbase.Post, m docbase.Meta) error
+)
+
+func WritePost(out io.Writer, n int) PostHandler {
 	type M struct {
 		docbase.Post
 		Total int
 		Lines []string
 	}
-	const tmplPostDetail = `[{{.ID}}] {{.Title}}
-
-> Tags      : {{range .Tags}}{{- printf "#%s " .Name }}{{end}}
-> CreatedAt : {{.CreatedAt}}
-> UpdatedAt : {{.UpdatedAt}}
-> Draft     : {{.Draft}}
-> Archived  : {{.Archived}}
+	const tmplPostDetail = `---
+ID:        {{.ID}}
+Title:     {{.Title}}
+Tags:      {{range .Tags}}{{- printf "#%s " .Name }}{{end}}
+CreatedAt: {{.CreatedAt}}
+UpdatedAt: {{.UpdatedAt}}
+Draft:     {{.Draft}}
+Archived:  {{.Archived}}
+---
 
 {{range .Lines}}
   {{- .}}
@@ -57,7 +65,7 @@ Showed {{len .Lines}} of {{.Total}}
 			}
 			lines = lines[:n]
 		}
-		err = tmpl.Execute(os.Stdout, M{
+		err = tmpl.Execute(out, M{
 			Post:  post,
 			Total: total,
 			Lines: lines,
@@ -91,7 +99,7 @@ func openbrowser(url string) {
 	}
 }
 
-func BuildListResultHandler(withMeta bool) (ListResonseHandler, error) {
+func BuildListResultHandler(withMeta bool) (PostListHandler, error) {
 	const _tmplPostsList = `{{range .}}{{printf "%d\t%s" .ID (summary .)}}{{"\n"}}{{end}}`
 	tmplPostsList, err := template.New("list-posts").Funcs(template.FuncMap{
 		"summary": summary,

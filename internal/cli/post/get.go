@@ -11,13 +11,12 @@ type GetRequest struct {
 	ID     docbase.PostID
 	Domain string
 }
-type GetResponseHandler func(ctx context.Context, post docbase.Post) error
 
-func Get(ctx context.Context, req GetRequest, handler GetResponseHandler) error {
+func Get(ctx context.Context, req GetRequest, handle PostHandler) error {
 	log.Printf("get post with req: %v", req)
 	post, err := docbase.GetPost(ctx, req.Domain, req.ID)
 	if err != nil {
 		return err
 	}
-	return handler(ctx, *post)
+	return handle(ctx, *post)
 }
