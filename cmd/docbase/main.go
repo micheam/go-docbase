@@ -85,12 +85,8 @@ var viewPost = &cli.Command{
 		&cli.IntFlag{
 			Name:    "lines",
 			Aliases: []string{"l"},
-			Usage:   "`NUM` to display body.",
-			Value:   30,
-		},
-		&cli.BoolFlag{
-			Name:  "full",
-			Usage: "display full body.",
+			Usage:   "`NUM` to display body. set 0 to display full.",
+			Value:   0,
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -105,11 +101,7 @@ var viewPost = &cli.Command{
 			Domain: c.String("domain"),
 			ID:     postID,
 		}
-		lines := c.Int("lines")
-		if c.Bool("full") {
-			lines = 0
-		}
-		var handle = post.WritePost(os.Stdout, lines)
+		var handle = post.WritePost(os.Stdout, c.Int("lines"))
 		if c.Bool("web") {
 			handle = post.OpenBrowser
 		}
