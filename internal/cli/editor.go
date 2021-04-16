@@ -64,7 +64,7 @@ func OpenFileInEditor(filename string, resolveEditor PreferredEditorResolver) er
 //
 // TODO(micheam): tempfile は外部から受け取るべき（内部でつくるとテストできない）
 func CaptureInputFromEditor(resolveEditor PreferredEditorResolver, value []byte) ([]byte, error) {
-	file, err := ioutil.TempFile(os.TempDir(), "*")
+	file, err := ioutil.TempFile(os.TempDir(), "*.md")
 	if err != nil {
 		return []byte{}, err
 	}
