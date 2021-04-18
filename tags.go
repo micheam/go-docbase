@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 )
 
@@ -22,7 +21,6 @@ func (c *Client) ListTags(ctx context.Context, domain string) ([]Tag, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
-	log.Println(req)
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
