@@ -8,12 +8,9 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
-
-	"github.com/micheam/go-docbase/internal/pointer"
 )
 
 type (
@@ -77,7 +74,6 @@ func (c *Client) ListPosts(ctx context.Context, domain string, param url.Values)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Println(req)
 	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, nil, err
@@ -183,8 +179,6 @@ func (c *Client) NewPost(ctx context.Context, domain string, title string, body 
 	if 300 <= resp.StatusCode {
 		// TODO(micheam): handle error object.
 		//   エラーの詳細情報がBodyで返却されるので、ちゃんと扱う
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Println(string(b))
 		return nil, fmt.Errorf("docbase api returns NG: %s", resp.Status)
 	}
 	var (
@@ -232,7 +226,7 @@ func (c *Client) UpdatePost(ctx context.Context, domain string, id PostID, body 
 			if err != nil {
 				return nil, fmt.Errorf("failed to read body: %w", err)
 			}
-			rb.Body = pointer.StringPtr(string(b))
+			rb.Body = stringPtr(string(b))
 		}
 		bb, err := json.Marshal(rb)
 		if err != nil {
@@ -254,8 +248,6 @@ func (c *Client) UpdatePost(ctx context.Context, domain string, id PostID, body 
 	if 300 <= resp.StatusCode {
 		// TODO(micheam): handle error object.
 		//   エラーの詳細情報がBodyで返却されるので、ちゃんと扱う
-		b, _ := ioutil.ReadAll(resp.Body)
-		log.Println(string(b))
 		return nil, fmt.Errorf("docbase api returns NG: %s", resp.Status)
 	}
 	var (

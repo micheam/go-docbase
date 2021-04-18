@@ -25,6 +25,12 @@ type Client struct {
 	*http.Client
 }
 
+func SetToken(t string) {
+	lock.Lock()
+	defer lock.Unlock()
+	defaultClient.token = t
+}
+
 const baseURL string = "https://api.docbase.io"
 
 func buildURL(paths ...string) string {
